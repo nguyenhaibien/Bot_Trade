@@ -1,0 +1,183 @@
+//@version=6
+indicator("M5_Scalper", overlay=true)
+
+// ==========================
+// BIẾN TRẠNG THÁI
+// ==========================
+var bool inTrade = false
+var bool isBuy = false
+var bool isBreakeven = false
+var float entryPrice = na
+var float slPrice = na
+var float tpPrice = na
+
+var line slLine = na
+var line tpLine = na
+
+// ======================
+// CHỈ HOẠT ĐỘNG TRÊN M5
+// ======================
+isM5 = timeframe.period == "5"
+
+// ======================
+// TÍNH EMA
+// ======================
+ema10 = ta.ema(close, 10)
+ema21 = ta.ema(close, 21)
+ema50 = ta.ema(close, 50)
+
+// ======================
+// VẼ EMA (chỉ khi M5)
+// ======================
+plot(isM5 ? ema10 : na, color=color.orange, title="EMA 10", linewidth=2)
+plot(isM5 ? ema21 : na, color=color.blue,   title="EMA 21", linewidth=2)
+plot(isM5 ? ema50 : na, color=color.red,    title="EMA 50", linewidth=2)
+
+// ===== INPUT RSI =====
+rsiLength   = input.int(14, "RSI Length")
+rsiBuy      = input.int(55, "RSI tối thiểu BUY")
+rsiOverBuy  = input.int(70, "RSI quá mua")
+rsiSell     = input.int(44, "RSI tối đa SELL")
+rsiOverSell = input.int(30, "RSI tối đa SELL")
+
+// ===== RSI =====
+rsiValue = ta.rsi(close, rsiLength)
+
+rsiBuyCondition  = rsiValue > rsiBuy and rsiValue < rsiOverBuy
+rsiSellCondition = rsiValue < rsiSell and rsiValue > rsiOverSell
+
+// ======================
+// ADX (LỌC SIDEWAY)
+// ======================
+adxLen = input.int(14, "ADX Length")
+adxSmoothing = input.int(14, "ADX Smoothing")
+adxMin = input.int(20, "ADX Min Trend")
+[diplus, diminus, adx] = ta.dmi(adxLen, adxSmoothing)
+hasTrend = adx > adxMin
+
+// ======================
+// SIDEWAY DETECTION
+// ======================
+isSideway = adx < 20
+
+// Vẽ nền sideway
+bgcolor( isM5 and isSideway ? color.new(color.gray, 85) : na, title="Sideway Zone")
+
+// ===== SESSION =====
+londonSession = input.session("0700-1600", "London Session")
+nySession     = input.session("1200-2100", "New York Session")
+
+inLondon = not na(time(timeframe.period, londonSession))
+inNY     = not na(time(timeframe.period, nySession))
+
+inSession = inLondon or inNY
+
+
+// ======================
+// ĐIỀU KIỆN XU HƯỚNG
+// ======================
+uptrend   = ema10 > ema21 and ema21 > ema50
+downtrend = ema10 < ema21 and ema21 < ema50
+
+// ======================
+// ĐIỀU KIỆN NẾN
+// ======================
+bearishCandle = close < open
+bullishCandle = close > open
+
+// ======================
+// SETUP BUY
+// ======================
+buyCondition = isM5 and barstate.isconfirmed and uptrend and bearishCandle and close < ema10 and close > ema21 and hasTrend //and inSession  // and rsiBuyCondition 
+
+// ======================
+// SETUP SELL
+// ======================
+sellCondition = isM5 and barstate.isconfirmed and downtrend and bullishCandle and close > ema10 and close < ema21 and hasTrend //and inSession  // and rsiSellCondition 
+
+// ======================
+// VẼ TÍN HIỆU
+// ======================
+newBuy =  (buyCondition and not inTrade) or (buyCondition and inTrade  and isBreakeven)
+plotshape(newBuy, title="BUY", style=shape.labelup, location=location.belowbar, color=color.new(color.green, 0), text="BUY", textcolor=color.white)
+
+newSell = (sellCondition and not inTrade)  or (sellCondition and inTrade and isBreakeven)
+plotshape(newSell, title="SELL", style=shape.labeldown, location=location.abovebar, color=color.new(color.red, 0), text="SELL", textcolor=color.white)
+
+// ======================
+// ALERT
+// ======================
+alertcondition(newBuy, title="BUY Alert", message='{"symbol":"{{ticker}}","type":"BUY","price":"{{close}}"}')
+alertcondition(newSell, title="SELL Alert", message='{"symbol":"{{ticker}}","type":"SEL","price":"{{close}}"}')
+
+
+// =======================
+// TÍNH PIP
+// =======================
+// // =======================
+// // VẼ SL / TP
+// // =======================
+isXAU = str.contains(syminfo.ticker, "XAU")
+isBTC = str.contains(syminfo.ticker, "BTC")
+//pip = syminfo.mintick * 10
+pip = isXAU ? syminfo.mintick * 1000 : ( isBTC ? syminfo.mintick * 1000 :syminfo.mintick * 10)
+sl_pip = 5 * pip
+tp_pip = 10 * pip
+ 
+// if buyCondition
+//     line.new(bar_index, close - sl_pip, bar_index + 5, close - sl_pip, color=color.red, width=2)
+//     line.new(bar_index, close + tp_pip, bar_index + 5, close + tp_pip, color=color.green, width=2)
+
+// if sellCondition
+//     line.new(bar_index, close + sl_pip, bar_index + 5, close + sl_pip, color=color.red, width=2)
+//     line.new(bar_index, close - tp_pip, bar_index + 5, close - tp_pip, color=color.green, width=2)
+// ==========================
+// ENTRY
+// ==========================
+// if (buyCondition and not inTrade) or (buyCondition and isBreakeven)
+if newBuy
+    inTrade := true
+    isBuy := true
+    isBreakeven := false
+    entryPrice := close
+    slPrice := entryPrice - sl_pip
+    tpPrice := entryPrice + tp_pip
+
+    line.new(bar_index, slPrice, bar_index + 2, slPrice, color=color.red, width=2)
+    line.new(bar_index, tpPrice, bar_index + 2, tpPrice, color=color.green, width=2)
+
+// if (sellCondition and not inTrade) or (buyCondition and isBreakeven)
+if newSell
+    inTrade := true
+    isBuy := false
+    isBreakeven := false
+    entryPrice := close
+    slPrice := entryPrice + sl_pip
+    tpPrice := entryPrice - tp_pip
+
+    line.new(bar_index, slPrice, bar_index + 2, slPrice, color=color.red, width=2)
+    line.new(bar_index, tpPrice, bar_index + 2, tpPrice, color=color.green, width=2)
+
+// ==========================
+// BREAKEVEN (1R)
+// ==========================
+if inTrade and not isBreakeven
+    R = math.abs(entryPrice - slPrice)
+
+    reach1R = isBuy  ? high >= entryPrice + R : low  <= entryPrice - R
+
+    if reach1R
+        slPrice := entryPrice
+        isBreakeven := true
+        // inTrade := false
+        // line.delete(slLine)
+        // line.new(bar_index, entryPrice, bar_index + 5, entryPrice, color=color.yellow, width=2)
+        line.new(bar_index, slPrice, bar_index + 3, slPrice, color=color.yellow, width=2)
+
+// ==========================
+// RESET (TP hoặc SL)
+// ==========================
+exitHit = isBuy  ? (low <= slPrice or high >= tpPrice) : (high >= slPrice or low <= tpPrice)
+
+if inTrade and exitHit
+    inTrade := false 
