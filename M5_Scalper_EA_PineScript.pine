@@ -58,7 +58,7 @@ hasTrend = adx > adxMin
 // ======================
 // SIDEWAY DETECTION
 // ======================
-isSideway = adx < 20
+isSideway = adx < 18
 
 // Vẽ nền sideway
 bgcolor( isM5 and isSideway ? color.new(color.gray, 85) : na, title="Sideway Zone")
@@ -124,17 +124,6 @@ pip = isXAU ? syminfo.mintick * 1000 : ( isBTC ? syminfo.mintick * 1000 :syminfo
 sl_pip = 5 * pip
 tp_pip = 10 * pip
  
-// if buyCondition
-//     line.new(bar_index, close - sl_pip, bar_index + 5, close - sl_pip, color=color.red, width=2)
-//     line.new(bar_index, close + tp_pip, bar_index + 5, close + tp_pip, color=color.green, width=2)
-
-// if sellCondition
-//     line.new(bar_index, close + sl_pip, bar_index + 5, close + sl_pip, color=color.red, width=2)
-//     line.new(bar_index, close - tp_pip, bar_index + 5, close - tp_pip, color=color.green, width=2)
-// ==========================
-// ENTRY
-// ==========================
-// if (buyCondition and not inTrade) or (buyCondition and isBreakeven)
 if newBuy
     inTrade := true
     isBuy := true
@@ -146,7 +135,6 @@ if newBuy
     line.new(bar_index, slPrice, bar_index + 2, slPrice, color=color.red, width=2)
     line.new(bar_index, tpPrice, bar_index + 2, tpPrice, color=color.green, width=2)
 
-// if (sellCondition and not inTrade) or (buyCondition and isBreakeven)
 if newSell
     inTrade := true
     isBuy := false
