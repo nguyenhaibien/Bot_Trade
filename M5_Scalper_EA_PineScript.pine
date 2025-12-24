@@ -14,6 +14,8 @@ var float tpPrice = na
 var line slLine = na
 var line tpLine = na
 
+var int entryBar = na
+
 // ======================
 // CHỈ HOẠT ĐỘNG TRÊN M5
 // ======================
@@ -129,6 +131,7 @@ if newBuy
     isBuy := true
     isBreakeven := false
     entryPrice := close
+    entryBar := bar_index
     slPrice := entryPrice - sl_pip
     tpPrice := entryPrice + tp_pip
 
@@ -140,6 +143,7 @@ if newSell
     isBuy := false
     isBreakeven := false
     entryPrice := close
+    entryBar := bar_index
     slPrice := entryPrice + sl_pip
     tpPrice := entryPrice - tp_pip
 
@@ -149,10 +153,11 @@ if newSell
 // ==========================
 // BREAKEVEN (1R)
 // ==========================
-if inTrade and not isBreakeven
-    R = math.abs(entryPrice - slPrice)
+if inTrade and not isBreakeven and bar_index > entryBar
+    // R = math.abs(entryPrice - slPrice)
 
-    reach1R = isBuy  ? high >= entryPrice + R : low  <= entryPrice - R
+    // reach1R = isBuy  ? high >= entryPrice + R : low  <= entryPrice - R
+    reach1R = isBuy  ? high >= entryPrice + sl_pip : low  <= entryPrice - sl_pip
 
     if reach1R
         slPrice := entryPrice
