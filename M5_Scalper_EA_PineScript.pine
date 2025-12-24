@@ -15,6 +15,7 @@ var line slLine = na
 var line tpLine = na
 
 var int entryBar = na
+var bool exitOrder = false
 
 // ======================
 // CHỈ HOẠT ĐỘNG TRÊN M5
@@ -153,7 +154,7 @@ if newSell
 // ==========================
 // BREAKEVEN (1R)
 // ==========================
-if inTrade and not isBreakeven and bar_index > entryBar
+if inTrade and not isBreakeven and (bar_index > entryBar)
     // R = math.abs(entryPrice - slPrice)
 
     // reach1R = isBuy  ? high >= entryPrice + R : low  <= entryPrice - R
@@ -161,16 +162,18 @@ if inTrade and not isBreakeven and bar_index > entryBar
 
     if reach1R
         slPrice := entryPrice
-        isBreakeven := true
         // inTrade := false
         // line.delete(slLine)
         // line.new(bar_index, entryPrice, bar_index + 5, entryPrice, color=color.yellow, width=2)
         line.new(bar_index, slPrice, bar_index + 3, slPrice, color=color.yellow, width=2)
+        isBreakeven := true
 
 // ==========================
 // RESET (TP hoặc SL)
 // ==========================
-exitHit = isBuy  ? (low <= slPrice or high >= tpPrice) : (high >= slPrice or low <= tpPrice)
+exitHit = false
+if (bar_index > entryBar)
+    exitHit := isBuy  ? (low <= slPrice or high >= tpPrice) : (high >= slPrice or low <= tpPrice)
 
 if inTrade and exitHit
     inTrade := false 
